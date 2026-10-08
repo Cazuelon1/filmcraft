@@ -3,6 +3,12 @@ use filmcraft_geom::{Affine, Vec2};
 use filmcraft_render::Blend;
 use filmcraft_render::plan::execute_cpu;
 
+/// Hold through device teardown: parallel DX12 device/pipeline creation can stall the driver.
+pub(crate) fn gpu_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 fn device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::default();
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).ok()?;
@@ -26,6 +32,7 @@ fn yuv_frame(w: u32, h: u32) -> Arc<VideoFrame> {
 
 #[test]
 fn gpu_matches_cpu_plan() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -87,6 +94,7 @@ fn half_float_conversion() {
 
 #[test]
 fn prepared_upload_matches_inline_conversion() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -138,6 +146,7 @@ fn prepared_upload_matches_inline_conversion() {
 /// whole frames from a previous composite in `crates/golden` GPU parity).
 #[test]
 fn upload_cache_keeps_buffers_alive() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -155,6 +164,7 @@ fn upload_cache_keeps_buffers_alive() {
 /// The WGSL tetrahedral LUT matches `Lut3d::apply` on the CPU.
 #[test]
 fn gpu_lut_matches_cpu_tetrahedral() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -210,6 +220,7 @@ fn test_masks(scale: f32) -> Vec<filmcraft_render::mask::FlatMask> {
 
 #[test]
 fn gpu_mask_coverage_matches_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -229,6 +240,7 @@ fn gpu_mask_coverage_matches_cpu() {
 
 #[test]
 fn gpu_masked_mix_matches_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -275,6 +287,7 @@ fn yuv_alpha_frame(w: u32, h: u32, bits: u32) -> Arc<VideoFrame> {
 /// the CPU compositor over an opaque background. (It used to draw such a layer opaque.)
 #[test]
 fn gpu_draws_yuv_alpha_plane_like_the_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;

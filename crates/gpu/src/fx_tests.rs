@@ -192,7 +192,23 @@ fn cases() -> Vec<(&'static str, Vec<(&'static str, ParamValue)>, bool)> {
 
 /// Every effect case on the GPU against its CPU reference, on the working image read back as f32.
 #[test]
+fn effect_source_preserves_pixel_centres_without_resampling() {
+    let _gpu_test = crate::tests::gpu_test_lock();
+    let Some((dev, q)) = device() else { return };
+    let mut c = GpuCompositor::new(&dev, &q);
+    for (w, h) in [(67, 41), (64, 40)] {
+        let px = picture(w, h);
+        let frame = VideoFrame::rgba_f32(w, h, px.clone());
+        let fx = LayerFx { size: (w, h), decimation: 1, ops: vec![] };
+        let (_, _, gpu) = c.effect_image(&frame, &fx).expect("source image");
+        let worst = px.iter().zip(&gpu).map(|(a, b)| (a - b).abs()).fold(0.0f32, f32::max);
+        assert_eq!(worst, 0.0, "identity sampling must preserve half-float source pixels at {w}x{h}");
+    }
+}
+
+#[test]
 fn gpu_effects_match_cpu_exactly() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -222,6 +238,7 @@ fn gpu_effects_match_cpu_exactly() {
 /// Chains run in order (and Unsharp keeps its original while blurring, between other blurs).
 #[test]
 fn gpu_effect_chains_match_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -270,6 +287,7 @@ fn gpu_effect_chains_match_cpu() {
 /// Keyframed parameters are evaluated at the layer's time on the CPU: the GPU result follows them.
 #[test]
 fn keyframed_effects_follow_time() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -338,6 +356,7 @@ fn hostile_parameters_are_bounded() {
     let op = FxOp::eval(&effect("gaussian_blur", &[("blurriness", fl(1e30))]), &cx(Tick::ZERO, 1.0), w, h);
     let Some(FxOp::Gaussian { rx, ry, .. }) = op else { panic!("{op:?}") };
     assert!(rx.iter().chain(&ry).all(|r| *r as usize <= 4 * w.max(h).max(8)), "{rx:?} {ry:?}");
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -362,6 +381,7 @@ fn hostile_parameters_are_bounded() {
 /// executor.
 #[test]
 fn gpu_effect_layers_match_cpu_plan() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -427,6 +447,7 @@ fn gpu_effect_layers_match_cpu_plan() {
 /// Plans without effects never create working textures.
 #[test]
 fn plain_layers_skip_the_effect_stage() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -452,6 +473,7 @@ fn plain_layers_skip_the_effect_stage() {
 /// effects on the CPU itself: the picture is the same.
 #[test]
 fn layers_with_effects_fall_back_to_the_cpu_without_a_stage() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;

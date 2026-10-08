@@ -59,6 +59,7 @@ fn collect_files_copies_used_media_and_opens() {
     let jobs = s.execute("jobs.list", json!({})).unwrap();
     assert!(jobs[0]["result"].get("error").is_none(), "{jobs}");
     // the copy opens with its media next to it, and plays the same frames
+    drop(s); // Windows cannot rename a directory while its media files are open.
     std::fs::rename(root.join("Media"), root.join("Media-gone")).unwrap();
     let mut t = opened(r["project"].as_str().unwrap());
     for it in t.project.items.values().filter_map(|i| i.as_media()) {

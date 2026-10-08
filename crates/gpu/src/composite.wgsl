@@ -156,6 +156,13 @@ fn hash2(x: u32, y: u32) -> f32 {
     return f32(h.y >> 8u) / 16777216.0;
 }
 
+// FX source draws are origin-aligned and scaled only by the decimation factor. Use exact
+// fragment pixel centres: interpolated source coordinates can blend neighbours even at 1:1.
+@fragment
+fn fs_fx_source(in: VOut) -> @location(0) vec4<f32> {
+    return layer_color(in.pos.xy * u.p2.w);
+}
+
 // Normal and Dissolve (fixed-function premultiplied "over").
 @fragment
 fn fs(in: VOut) -> @location(0) vec4<f32> {

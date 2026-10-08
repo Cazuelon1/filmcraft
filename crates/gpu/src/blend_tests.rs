@@ -138,6 +138,7 @@ pub(crate) fn ramp_layer(w: u32, h: u32, phase: u32) -> Arc<VideoFrame> {
 /// away from the layers' outlines (which are reported: the CPU fades them over an extra pixel).
 #[test]
 fn gpu_blend_modes_match_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -205,6 +206,7 @@ fn gpu_blend_modes_match_cpu() {
 /// partial alpha on either side.
 #[test]
 fn gpu_blend_edge_cases_match_cpu() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -263,6 +265,7 @@ fn gpu_blend_edge_cases_match_cpu() {
 /// Dissolve on the GPU reproduces the CPU's pixel pattern exactly (opaque layer at partial opacity).
 #[test]
 fn gpu_dissolve_pattern_is_exact() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;
@@ -297,6 +300,7 @@ fn gpu_dissolve_pattern_is_exact() {
 /// layers entirely off the output draw nothing.
 #[test]
 fn normal_fast_path_and_blend_layers_off_output() {
+    let _gpu_test = crate::tests::gpu_test_lock();
     let Some((dev, q)) = device() else {
         eprintln!("no GPU adapter; skipping");
         return;

@@ -37,6 +37,12 @@ FILMCRAFT_REQUIRE_ORACLES=1 cargo test --workspace   # CI: missing ffmpeg fails 
 
 Commit `*.proptest-regressions` files so failing cases are re-run.
 
+On Windows, compare filesystem paths as `Path` / `PathBuf`, not slash-specific strings.
+Release finished fixture sessions before renaming a media directory: their streaming readers
+keep the files open, and Windows rejects that directory move. The GPU unit tests share a
+test-only guard through device teardown to avoid concurrent DX12 device/pipeline contention;
+they still run every rendering and precision assertion under the normal test harness.
+
 ## 2. ffmpeg oracle tests
 
 ffmpeg and ffprobe are **external processes** used to generate fixtures and to check results. They

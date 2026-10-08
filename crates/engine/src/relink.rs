@@ -303,12 +303,13 @@ pub fn derive_remap(old: &str, new: &str) -> Option<(String, String)> {
 /// Apply a remap to a path (None when it doesn't start with the old prefix).
 pub fn apply_remap(path: &str, from: &str, to: &str) -> Option<String> {
     let p = path.replace('\\', "/");
+    let from = from.replace('\\', "/");
     let from = from.trim_end_matches('/');
     let rest = p.strip_prefix(from)?;
     if !(rest.is_empty() || rest.starts_with('/')) {
         return None;
     }
-    Some(format!("{}{rest}", to.trim_end_matches('/')))
+    Some(format!("{}{rest}", to.replace('\\', "/").trim_end_matches('/')))
 }
 
 /// One planned relink: item → (new path, checked candidate).

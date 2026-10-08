@@ -332,12 +332,24 @@ fn expand_home(p: &str) -> String {
     }
 }
 
-/// Output path for `seq`: the `path` param (a file, or a directory ending in `/` or existing), else
-/// `<default dir>/<sequence name>.<ext>`; `suffix` distinguishes several items.
+/// A filesystem directory with native separators, including Windows verbatim paths.
+fn output_directory(path: &str) -> PathBuf {
+    // Verbatim Windows paths do not treat '/' as a separator. Normalize before joining.
+    #[cfg(windows)]
+    let path = path.replace('/', "\\");
+    PathBuf::from(path)
+}
+
+fn is_output_directory(path: &str) -> bool {
+    path.ends_with(['/', '\\']) || output_directory(path).is_dir()
+}
+
+/// Output path for `seq`: a file or directory param, else the sequence name in the default
+/// directory; `suffix` distinguishes several items.
 fn output_path(s: &Session, p: &Value, seq: ItemId, settings: &ExportSettings, suffix: Option<usize>) -> String {
     let name = s.project.item(seq).map(|i| i.name.clone()).unwrap_or_else(|| "Sequence".into());
     let base = match str_p(p, "path").map(expand_home) {
-        Some(x) if x.ends_with('/') || x.ends_with('\\') || Path::new(&x).is_dir() => Path::new(&x).join(file_safe(&name)).to_string_lossy().to_string(),
+        Some(x) if is_output_directory(&x) => output_directory(&x).join(file_safe(&name)).to_string_lossy().to_string(),
         Some(x) => x,
         None => default_export_dir(s).join(file_safe(&name)).to_string_lossy().to_string(),
     };
@@ -631,11 +643,7 @@ fn queue_add(s: &mut Session, p: &Value) -> Result<Value> {
             };
             st.range = range_param(s, &project, seq, *r, times, cmd)?;
             // several ranges of one sequence get numbered names; several sequences their own names
-            let suffix = if many && (ranges.len() > 1 || str_p(p, "path").is_some_and(|x| !x.ends_with('/') && !Path::new(&expand_home(x)).is_dir())) {
-                Some(n)
-            } else {
-                None
-            };
+            let suffix = if many && (ranges.len() > 1 || str_p(p, "path").is_some_and(|x| !is_output_directory(&expand_home(x)))) { Some(n) } else { None };
             st.path = output_path(s, p, seq, &st, suffix);
             n += 1;
             items.push((seq, st));
@@ -1049,6 +1057,16 @@ pub(crate) fn commands() -> Vec<CommandSpec> {
 #[cfg(test)]
 mod guard_tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn verbatim_export_directory_accepts_a_forward_trailing_separator() {
+        let s = Session::default();
+        let settings = ExportSettings { format: Format::Wav, ..Default::default() };
+        for dir in [r"\\?\C:\Exports/", r"\\?\C:\Exports\"] {
+            assert_eq!(output_path(&s, &json!({"path": dir}), ItemId(u64::MAX), &settings, None), r"\\?\C:\Exports\Sequence.wav");
+        }
+    }
 
     /// A panicking job body must leave the job finished with an error, not "running" forever.
     #[test]
