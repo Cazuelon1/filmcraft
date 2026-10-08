@@ -17,7 +17,7 @@ use filmcraft_project::Label;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::theme::Tokens;
+use crate::theme::{ThemeKind, Tokens};
 use crate::{AudioDevices, Dialog, FilmcraftApp};
 
 /// Window size (Premiere's is 927 × 724 pt).
@@ -70,10 +70,15 @@ pub fn label_color(app: &FilmcraftApp, l: Label) -> Color32 {
     Color32::from_rgb(c[0], c[1], c[2])
 }
 
-/// Choose a theme from View ▸ Appearance or `ui.set`: stored as Settings ▸ Appearance ▸ Color Theme.
+/// Choose a preset from View ▸ Themes or `ui.set`, including its default accent.
 pub fn set_theme(app: &mut FilmcraftApp, ctx: &egui::Context, k: crate::theme::ThemeKind) {
-    if let Err(e) = app.session.execute("prefs.set", json!({"key": "appearance.colorTheme", "value": k.pref_name()})) {
+    let c = Tokens::for_kind(k).accent;
+    if let Err(e) = app
+        .session
+        .execute("prefs.set", json!({"values": {"appearance.colorTheme": k.pref_name(), "appearance.highlightColor": settings::hex([c.r(), c.g(), c.b()])}}))
+    {
         app.ui.status = e.to_string();
+        return;
     }
     app.apply_prefs(ctx);
     app.set_theme(ctx, k);
@@ -280,8 +285,12 @@ fn draw_field(app: &mut FilmcraftApp, ui: &mut Ui, d: &mut SettingsDraft, f: &Fi
                 Kind::Choice(opts) => {
                     field_label(ui, f.label);
                     if let Some(v) = combo(app, ui, f.key, &choice_text(&cur), &static_opts(opts), 300.0) {
-                        let x = if cur.is_number() { v.parse::<u64>().map(Value::from).unwrap_or(json!(v)) } else { json!(v) };
-                        put(&mut d.values, f.key, x);
+                        if f.key == "appearance.colorTheme" {
+                            choose_theme(d, ThemeKind::from_pref(&v));
+                        } else {
+                            let x = if cur.is_number() { v.parse::<u64>().map(Value::from).unwrap_or(json!(v)) } else { json!(v) };
+                            put(&mut d.values, f.key, x);
+                        }
                     }
                 }
                 Kind::Device(list) => {
@@ -361,9 +370,57 @@ fn mb(bytes: u64) -> String {
     if bytes >= 1 << 30 { format!("{:.1} GB", bytes as f64 / (1u64 << 30) as f64) } else { format!("{:.1} MB", bytes as f64 / (1u64 << 20) as f64) }
 }
 
+fn choose_theme(d: &mut SettingsDraft, kind: ThemeKind) {
+    let c = Tokens::for_kind(kind).accent;
+    put(&mut d.values, "appearance.colorTheme", json!(kind.pref_name()));
+    put(&mut d.values, "appearance.highlightColor", json!(settings::hex([c.r(), c.g(), c.b()])));
+}
+
+/// Palette samples are drawn with UI colours; the selection stays in the draft until OK.
+fn theme_presets(app: &mut FilmcraftApp, ui: &mut Ui, d: &mut SettingsDraft) {
+    let current = choice_text(get(&d.values, "appearance.colorTheme"));
+    let width = ((ui.available_width() - 12.0) / 2.0).max(0.0);
+    for pair in ThemeKind::PRESETS.chunks(2) {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 12.0;
+            for &kind in pair {
+                let palette = Tokens::for_kind(kind);
+                let selected = current == kind.pref_name();
+                let label = app.ui.language.tr(kind.label());
+                let r = ui.add_sized(
+                    vec2(width, 100.0),
+                    egui::Button::new(RichText::new(label).size(15.0).color(palette.text))
+                        .selected(selected)
+                        .fill(palette.panel_bg)
+                        .stroke(Stroke::new(if selected { 2.0 } else { 1.0 }, if selected { palette.focus } else { palette.field_border }))
+                        .corner_radius(CornerRadius::same(8)),
+                );
+                app.auto.add(&format!("settings.themePreset.{}", kind.pref_name()), r.rect, label);
+                if r.has_focus() || r.hovered() {
+                    ui.painter().rect_stroke(r.rect.shrink(3.0), CornerRadius::same(6), Stroke::new(1.0, palette.focus), egui::StrokeKind::Inside);
+                }
+                let colors = [palette.app_bg, palette.header_bg, palette.field_bg, palette.accent, palette.text];
+                let swatch_w = ((r.rect.width() - 40.0) / colors.len() as f32).max(0.0);
+                for (i, color) in colors.into_iter().enumerate() {
+                    let min = r.rect.left_bottom() + vec2(16.0 + i as f32 * (swatch_w + 2.0), -28.0);
+                    ui.painter().rect_filled(Rect::from_min_size(min, vec2(swatch_w, 12.0)), 2.0, color);
+                }
+                if selected {
+                    ui.painter().text(r.rect.right_top() + vec2(-12.0, 10.0), Align2::RIGHT_TOP, "✓", Tokens::ui(14.0), palette.focus);
+                }
+                if r.clicked() {
+                    choose_theme(d, kind);
+                }
+            }
+        });
+        ui.add_space(6.0);
+    }
+}
+
 fn custom(app: &mut FilmcraftApp, ui: &mut Ui, d: &mut SettingsDraft, name: &str) {
     let t = app.tokens;
     match name {
+        "themePresets" => theme_presets(app, ui, d),
         "labelColors" => {
             let tt = t;
             group(ui, &tt, "Label Colors", |ui| {
@@ -510,7 +567,13 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
                 } else if r.hovered() {
                     ui.painter().rect_filled(row, 0.0, t.hover.gamma_multiply(0.6));
                 }
-                ui.painter().text(row.left_center() + vec2(8.0, 0.0), Align2::LEFT_CENTER, c.title, Tokens::ui(12.5), if sel { t.text } else { t.text_dim });
+                ui.painter().text(
+                    row.left_center() + vec2(8.0, 0.0),
+                    Align2::LEFT_CENTER,
+                    app.ui.language.tr(c.title),
+                    Tokens::ui(12.5),
+                    if sel { t.text } else { t.text_dim },
+                );
                 app.auto.add(&format!("settings.category.{}", c.id), row, c.title);
                 if r.clicked() {
                     d.page = c.id.into();

@@ -83,7 +83,8 @@ impl Default for GeneralPrefs {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppearancePrefs {
-    /// "Color Theme": `darkest` (default) | `dark` | `light`.
+    /// "Color Theme": `darkest` (default) | `light` | `midnight` | `ocean`.
+    /// The older `dark` (medium grey) value remains readable for existing preferences.
     pub color_theme: String,
     /// "Accessible color contrast": brighter secondary text and borders.
     pub accessible_contrast: bool,
@@ -601,7 +602,7 @@ const STARTUP: &[(&str, &str)] = &[("showHome", "Show Home"), ("openMostRecent",
 const OPENING: &[(&str, &str)] = &[("showOpenDialog", "Show Open Dialog"), ("showHome", "Show Home")];
 const BIN_OPEN: &[(&str, &str)] = &[("openInPlace", "Open in place"), ("openNewTab", "Open new tab"), ("openNewWindow", "Open in new window")];
 const PROJECT_OPEN: &[(&str, &str)] = &[("openNewTab", "Open new tab"), ("openNewWindow", "Open in new window")];
-const THEMES: &[(&str, &str)] = &[("darkest", "Darkest"), ("dark", "Dark"), ("light", "Light")];
+const THEMES: &[(&str, &str)] = &[("darkest", "Dark (Default)"), ("light", "White"), ("midnight", "Midnight"), ("ocean", "Ocean")];
 const MIXDOWN: &[(&str, &str)] = &[("front", "Front Only"), ("frontRear", "Front + Rear"), ("frontLfe", "Front + LFE"), ("frontRearLfe", "Front + Rear + LFE")];
 const AUDITION: &[(&str, &str)] = &[("scratch", "Scratch disk location for Captured Audio"), ("nextToMedia", "Next to original media files")];
 const BUFFERS: &[(&str, &str)] = &[("64", "64"), ("128", "128"), ("256", "256"), ("512", "512"), ("1024", "1024"), ("2048", "2048"), ("4096", "4096")];
@@ -701,8 +702,9 @@ static CATEGORIES: &[Category] = &[
     },
     Category {
         id: "appearance",
-        title: "Appearance",
+        title: "Themes",
         rows: &[
+            Row::Custom("themePresets"),
             f("appearance.colorTheme", "Color Theme", Kind::Choice(THEMES), true),
             b("appearance.accessibleContrast", "Accessible color contrast", true),
             f("appearance.highlightColor", "Highlight Color", Kind::Color, true),
@@ -1036,6 +1038,10 @@ pub fn field(key: &str) -> Option<Field> {
 
 /// Check a value for `key` against the schema (choices, colours). Ranges are clamped later.
 pub fn validate(key: &str, v: &Value) -> std::result::Result<(), String> {
+    // Keep existing medium-grey preferences without adding a fifth preset to the picker.
+    if key == "appearance.colorTheme" && v.as_str() == Some("dark") {
+        return Ok(());
+    }
     let kind = match field(key) {
         Some(f) => f.kind,
         None if is_unit_key(key) => Kind::Choice(DURATION_UNITS),

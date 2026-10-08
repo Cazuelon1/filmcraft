@@ -16,21 +16,40 @@ pub enum ThemeKind {
     /// Slightly lighter grey panels (Premiere's brightness slider mid position).
     Medium,
     Light,
+    Midnight,
+    Ocean,
 }
 
 impl ThemeKind {
-    /// Settings ▸ Appearance ▸ Color Theme value (`darkest`, `dark`, `light`).
+    /// The four presets shown in Preferences and View ▸ Themes.
+    pub const PRESETS: [Self; 4] = [Self::Light, Self::Dark, Self::Midnight, Self::Ocean];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Dark => "Dark (Default)",
+            Self::Medium => "Medium (Legacy)",
+            Self::Light => "White",
+            Self::Midnight => "Midnight",
+            Self::Ocean => "Ocean",
+        }
+    }
+
+    /// Stable Settings ▸ Themes ▸ Color Theme value.
     pub fn pref_name(self) -> &'static str {
         match self {
             ThemeKind::Dark => "darkest",
             ThemeKind::Medium => "dark",
             ThemeKind::Light => "light",
+            ThemeKind::Midnight => "midnight",
+            ThemeKind::Ocean => "ocean",
         }
     }
     pub fn from_pref(s: &str) -> ThemeKind {
         match s {
             "dark" => ThemeKind::Medium,
             "light" => ThemeKind::Light,
+            "midnight" => ThemeKind::Midnight,
+            "ocean" => ThemeKind::Ocean,
             _ => ThemeKind::Dark,
         }
     }
@@ -38,7 +57,9 @@ impl ThemeKind {
         match s.to_ascii_lowercase().as_str() {
             "dark" | "darkest" => Some(ThemeKind::Dark),
             "medium" | "grey" | "gray" => Some(ThemeKind::Medium),
-            "light" => Some(ThemeKind::Light),
+            "light" | "white" => Some(ThemeKind::Light),
+            "midnight" => Some(ThemeKind::Midnight),
+            "ocean" => Some(ThemeKind::Ocean),
             _ => None,
         }
     }
@@ -165,16 +186,17 @@ impl Tokens {
                 ..dark
             },
             ThemeKind::Light => Tokens {
-                app_bg: Color32::from_rgb(180, 180, 180),
-                header_bg: Color32::from_rgb(214, 214, 214),
-                panel_bg: Color32::from_rgb(232, 232, 232),
-                tab_bg: Color32::from_rgb(232, 232, 232),
+                app_bg: Color32::from_rgb(225, 229, 235),
+                header_bg: Color32::from_rgb(242, 244, 248),
+                panel_bg: Color32::from_rgb(250, 251, 253),
+                tab_bg: Color32::from_rgb(242, 244, 248),
                 tab_text: Color32::from_rgb(90, 90, 90),
                 tab_text_active: Color32::from_rgb(20, 20, 20),
                 text: Color32::from_rgb(34, 34, 34),
                 text_dim: Color32::from_rgb(90, 90, 90),
                 text_faint: Color32::from_rgb(140, 140, 140),
                 icon: Color32::from_rgb(60, 60, 60),
+                icon_active: Color32::from_rgb(20, 20, 20),
                 hover: Color32::from_rgb(210, 210, 210),
                 pressed: Color32::from_rgb(196, 196, 196),
                 field_bg: Color32::from_rgb(250, 250, 250),
@@ -188,6 +210,79 @@ impl Tokens {
                 tl_header_bg: Color32::from_rgb(214, 214, 214),
                 tl_ruler_bg: Color32::from_rgb(226, 226, 226),
                 tl_ruler_text: Color32::from_rgb(80, 80, 80),
+                clip_selected_border: Color32::from_rgb(47, 107, 223),
+                ..dark
+            },
+            ThemeKind::Midnight => Tokens {
+                app_bg: Color32::from_rgb(12, 10, 22),
+                header_bg: Color32::from_rgb(23, 18, 38),
+                panel_bg: Color32::from_rgb(29, 23, 46),
+                tab_bg: Color32::from_rgb(23, 18, 38),
+                text: Color32::from_rgb(235, 229, 248),
+                text_dim: Color32::from_rgb(191, 181, 214),
+                text_faint: Color32::from_rgb(148, 135, 172),
+                tab_text: Color32::from_rgb(191, 181, 214),
+                tab_text_active: Color32::from_rgb(235, 229, 248),
+                icon: Color32::from_rgb(191, 181, 214),
+                icon_active: Color32::from_rgb(235, 229, 248),
+                accent: Color32::from_rgb(124, 86, 196),
+                accent_hover: Color32::from_rgb(140, 102, 212),
+                focus: Color32::from_rgb(173, 143, 235),
+                hover: Color32::from_rgb(47, 36, 68),
+                pressed: Color32::from_rgb(65, 47, 94),
+                field_bg: Color32::from_rgb(18, 14, 30),
+                field_border: Color32::from_rgb(70, 56, 94),
+                separator: Color32::from_rgb(56, 44, 78),
+                row_alt: Color32::from_rgb(34, 27, 53),
+                row_selected: Color32::from_rgb(65, 47, 94),
+                hot_text: Color32::from_rgb(190, 161, 247),
+                tl_bg: Color32::from_rgb(23, 18, 38),
+                tl_track_bg: Color32::from_rgb(29, 23, 46),
+                tl_track_bg_alt: Color32::from_rgb(34, 27, 53),
+                tl_header_bg: Color32::from_rgb(29, 23, 46),
+                tl_ruler_bg: Color32::from_rgb(23, 18, 38),
+                tl_ruler_tick: Color32::from_rgb(148, 135, 172),
+                tl_ruler_text: Color32::from_rgb(191, 181, 214),
+                playhead: Color32::from_rgb(190, 161, 247),
+                in_out_shade: Color32::from_rgb(56, 44, 78),
+                monitor_bg: Color32::from_rgb(12, 10, 22),
+                timecode: Color32::from_rgb(190, 161, 247),
+                ..dark
+            },
+            ThemeKind::Ocean => Tokens {
+                app_bg: Color32::from_rgb(8, 19, 25),
+                header_bg: Color32::from_rgb(13, 30, 39),
+                panel_bg: Color32::from_rgb(18, 39, 49),
+                tab_bg: Color32::from_rgb(13, 30, 39),
+                text: Color32::from_rgb(222, 241, 244),
+                text_dim: Color32::from_rgb(167, 199, 205),
+                text_faint: Color32::from_rgb(116, 157, 166),
+                tab_text: Color32::from_rgb(167, 199, 205),
+                tab_text_active: Color32::from_rgb(222, 241, 244),
+                icon: Color32::from_rgb(167, 199, 205),
+                icon_active: Color32::from_rgb(222, 241, 244),
+                accent: Color32::from_rgb(18, 128, 137),
+                accent_hover: Color32::from_rgb(34, 144, 153),
+                focus: Color32::from_rgb(74, 196, 198),
+                hover: Color32::from_rgb(26, 57, 68),
+                pressed: Color32::from_rgb(33, 76, 87),
+                field_bg: Color32::from_rgb(9, 24, 32),
+                field_border: Color32::from_rgb(46, 79, 91),
+                separator: Color32::from_rgb(32, 61, 73),
+                row_alt: Color32::from_rgb(21, 45, 56),
+                row_selected: Color32::from_rgb(33, 76, 87),
+                hot_text: Color32::from_rgb(97, 213, 211),
+                tl_bg: Color32::from_rgb(13, 30, 39),
+                tl_track_bg: Color32::from_rgb(18, 39, 49),
+                tl_track_bg_alt: Color32::from_rgb(21, 45, 56),
+                tl_header_bg: Color32::from_rgb(18, 39, 49),
+                tl_ruler_bg: Color32::from_rgb(13, 30, 39),
+                tl_ruler_tick: Color32::from_rgb(116, 157, 166),
+                tl_ruler_text: Color32::from_rgb(167, 199, 205),
+                playhead: Color32::from_rgb(97, 213, 211),
+                in_out_shade: Color32::from_rgb(32, 61, 73),
+                monitor_bg: Color32::from_rgb(8, 19, 25),
+                timecode: Color32::from_rgb(97, 213, 211),
                 ..dark
             },
         }

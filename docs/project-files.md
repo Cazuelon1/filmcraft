@@ -213,7 +213,7 @@ opens the dialog on a page.
 | Category | Takes effect |
 |---|---|
 | General | At Startup (Show Home = demo project, Open Most Recent, empty project; recent projects are remembered on open/save), Show Tool Tips |
-| Appearance | Color Theme (Darkest / Dark / Light; View ▸ Appearance writes it too), highlight colour, accessible contrast |
+| Themes | Four palette presets with colour samples: White, Dark (default), Midnight (purple), Ocean (teal). OK saves the choice; Cancel discards it. View ▸ Themes applies a preset immediately. Highlight colour and accessible contrast remain adjustable. The preference keys stay under `appearance` for compatibility; older medium-grey themes still load. |
 | Audio | Automatch Time, Large Volume Adjustment, automation keyframe thinning (linear, minimum time) |
 | Audio Hardware | device class (cpal host), output device, I/O buffer size, sample rate, force document rate, Output Mapping (programme L/R → device channels) |
 | Auto Save | the auto-save ring and the crash-recovery journal |

@@ -294,6 +294,40 @@ fn appearance_labels_and_tooltips_take_effect() {
 }
 
 #[test]
+fn theme_presets_apply_only_on_ok_and_match_the_view_menu() {
+    let mut d = Driver::demo();
+    for (name, command, accent) in
+        [("light", "light", [47, 107, 223]), ("midnight", "midnight", [124, 86, 196]), ("ocean", "ocean", [18, 128, 137]), ("darkest", "dark", [47, 107, 223])]
+    {
+        let before = d.pref("appearance.colorTheme");
+        d.menu("app.settings.appearance");
+        for preset in ["light", "darkest", "midnight", "ocean"] {
+            assert!(d.has(&format!("settings.themePreset.{preset}")));
+        }
+        d.click(&format!("settings.themePreset.{name}"));
+        assert_eq!(d.pref("appearance.colorTheme"), before, "selection is a draft until OK");
+        d.shot(&format!("theme-{name}-choice"));
+        d.click("settings.ok");
+        assert_eq!(d.pref("appearance.colorTheme"), name);
+        let from_preferences = d.harness.state().tokens;
+        assert_eq!(from_preferences.accent, egui::Color32::from_rgb(accent[0], accent[1], accent[2]));
+        assert_eq!(d.inspect()["ui"]["dark"], name != "light");
+        d.menu("view.theme.dark");
+        d.menu(&format!("view.theme.{command}"));
+        assert_eq!(d.harness.state().tokens, from_preferences);
+        d.menu("app.settings.appearance");
+        assert_eq!(d.draft()["values"]["appearance"]["colorTheme"], name);
+        d.shot(&format!("theme-{name}"));
+        d.click("settings.themePreset.midnight");
+        d.click("settings.cancel");
+        assert_eq!(d.pref("appearance.colorTheme"), name, "Cancel discards a new selection");
+    }
+    let reply = d.call("ui.set", json!({"theme": "unknown-preset"}));
+    assert_eq!(reply["ok"], false);
+    assert_eq!(d.pref("appearance.colorTheme"), "darkest");
+}
+
+#[test]
 fn memory_and_media_cache_pages() {
     let mut d = Driver::demo();
     d.menu("app.settings.memory");

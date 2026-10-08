@@ -122,6 +122,21 @@ fn prefs_persist_through_the_data_directory() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Removing a theme from validation or migration must not silently reset a saved choice.
+#[test]
+fn preset_themes_survive_preferences_reload() {
+    for theme in ["darkest", "light", "midnight", "ocean", "dark"] {
+        let dir = tmp_dir("theme-persist");
+        let mut s = Session::default();
+        s.start_autosave(crate::autosave::AutosaveConfig::new(&dir)).unwrap();
+        set(&mut s, "appearance.colorTheme", json!(theme));
+        s.shutdown();
+        let loaded = Preferences::load(&dir.join("preferences.json"));
+        assert_eq!(loaded.appearance.color_theme, theme);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
 #[test]
 fn v1_preferences_migrate_and_bad_values_are_repaired() {
     let dir = tmp_dir("prefs-migrate");
